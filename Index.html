@@ -1,0 +1,1843 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>HomeVault - Sistema de Inventario y Almacén Hogareño</title>
+  
+  <!-- PWA & Mobile Meta Tags -->
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="HomeVault">
+  <meta name="description" content="Sistema de inventario doméstico para taller, oficina y bodega">
+
+  <!-- Embedded Web App Manifest via Data URI -->
+  <link rel="manifest" id="manifest-link">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Modern QRCode library -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    /* Custom scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #print-area, #print-area * {
+        visibility: visible;
+      }
+      #print-area {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        margin: 0;
+        padding: 10px;
+        background: white;
+      }
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-indigo-600 selection:text-white">
+
+  <!-- TOP NAVIGATION BAR -->
+  <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-40 px-3 sm:px-6 py-3 flex items-center justify-between shadow-sm">
+    <div class="flex items-center space-x-2.5">
+      <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/20 text-white font-black shrink-0">
+        <i data-lucide="boxes" class="w-5 h-5 sm:w-6 sm:h-6"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-1.5 sm:gap-2">
+          <h1 class="text-base sm:text-lg font-bold tracking-tight text-white leading-tight">HomeVault</h1>
+          <span class="text-[9px] sm:text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hidden sm:inline-block">ALMACÉN DOMÉSTICO</span>
+        </div>
+        <p class="text-[11px] sm:text-xs text-slate-400 line-clamp-1">Control de taller, oficina y bodega</p>
+      </div>
+    </div>
+
+    <!-- Quick action buttons -->
+    <div class="flex items-center gap-1.5 sm:gap-2">
+      <!-- PWA Install Button (Dynamic) -->
+      <button id="pwa-install-btn" onclick="triggerPWAInstall()" class="hidden px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-600/20 transition items-center gap-1.5">
+        <i data-lucide="download" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
+        <span>Instalar App</span>
+      </button>
+
+      <button onclick="openCatalogModal()" class="px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5" title="Gestionar Catálogos de Zonas y Categorías">
+        <i data-lucide="folder-tree" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400"></i>
+        <span class="hidden md:inline">Zonas y Categorías</span>
+      </button>
+
+      <button onclick="openLabelModal()" class="px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5" title="Imprimir etiquetas con códigos">
+        <i data-lucide="qr-code" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-400"></i>
+        <span class="hidden lg:inline">Etiquetas QR</span>
+      </button>
+
+      <button onclick="openDataModal()" class="px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5" title="Respaldar o exportar">
+        <i data-lucide="database" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400"></i>
+        <span class="hidden md:inline">Datos</span>
+      </button>
+
+      <button onclick="openItemModal()" class="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/30 transition flex items-center gap-1.5">
+        <i data-lucide="plus-circle" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
+        <span class="hidden sm:inline">Nuevo Artículo</span>
+        <span class="sm:hidden">Nuevo</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
+
+    <!-- KPI DASHBOARD METRICS -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+      <!-- Total Items -->
+      <div class="bg-slate-800/60 border border-slate-800 rounded-2xl p-3.5 sm:p-4.5 flex flex-col justify-between hover:border-slate-700 transition">
+        <div class="flex items-center justify-between text-slate-400 mb-1.5">
+          <span class="text-[11px] sm:text-xs font-semibold uppercase tracking-wider">Total Ítems</span>
+          <div class="p-1.5 bg-indigo-500/10 rounded-lg text-indigo-400"><i data-lucide="package" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i></div>
+        </div>
+        <div class="flex items-baseline justify-between">
+          <span id="metric-total-items" class="text-xl sm:text-3xl font-bold text-white">0</span>
+          <span id="metric-total-units" class="text-[10px] sm:text-xs text-slate-400 font-medium">0 uds</span>
+        </div>
+      </div>
+
+      <!-- Workshop distribution -->
+      <div class="bg-slate-800/60 border border-slate-800 rounded-2xl p-3.5 sm:p-4.5 flex flex-col justify-between hover:border-slate-700 transition">
+        <div class="flex items-center justify-between text-slate-400 mb-1.5">
+          <span class="text-[11px] sm:text-xs font-semibold uppercase tracking-wider">En Taller</span>
+          <div class="p-1.5 bg-amber-500/10 rounded-lg text-amber-400"><i data-lucide="wrench" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i></div>
+        </div>
+        <div class="flex items-baseline justify-between">
+          <span id="metric-taller-count" class="text-xl sm:text-3xl font-bold text-white">0</span>
+          <span class="text-[10px] sm:text-xs text-amber-400/90 font-medium truncate">Herramientas</span>
+        </div>
+      </div>
+
+      <!-- Office distribution -->
+      <div class="bg-slate-800/60 border border-slate-800 rounded-2xl p-3.5 sm:p-4.5 flex flex-col justify-between hover:border-slate-700 transition">
+        <div class="flex items-center justify-between text-slate-400 mb-1.5">
+          <span class="text-[11px] sm:text-xs font-semibold uppercase tracking-wider">En Oficina</span>
+          <div class="p-1.5 bg-blue-500/10 rounded-lg text-blue-400"><i data-lucide="laptop" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i></div>
+        </div>
+        <div class="flex items-baseline justify-between">
+          <span id="metric-oficina-count" class="text-xl sm:text-3xl font-bold text-white">0</span>
+          <span class="text-[10px] sm:text-xs text-blue-400/90 font-medium truncate">Equipos / Docs</span>
+        </div>
+      </div>
+
+      <!-- Attention needed -->
+      <div class="bg-slate-800/60 border border-slate-800 rounded-2xl p-3.5 sm:p-4.5 flex flex-col justify-between hover:border-slate-700 transition">
+        <div class="flex items-center justify-between text-slate-400 mb-1.5">
+          <span class="text-[11px] sm:text-xs font-semibold uppercase tracking-wider">Atención</span>
+          <div class="p-1.5 bg-rose-500/10 rounded-lg text-rose-400"><i data-lucide="alert-triangle" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i></div>
+        </div>
+        <div class="flex items-baseline justify-between">
+          <span id="metric-attention-count" class="text-xl sm:text-3xl font-bold text-white">0</span>
+          <span id="metric-attention-details" class="text-[10px] sm:text-xs text-rose-400/90 font-medium truncate">Prestados / Avería</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- FILTER & SEARCH CONTROL TOOLBAR -->
+    <div class="bg-slate-800/70 border border-slate-800 rounded-2xl p-3 sm:p-4 shadow-sm backdrop-blur space-y-3">
+      <div class="flex flex-col md:flex-row gap-2.5 sm:gap-3 items-stretch md:items-center justify-between">
+        <!-- Search Input -->
+        <div class="relative flex-1">
+          <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+          <input 
+            type="text" 
+            id="search-input" 
+            placeholder="Buscar por nombre, código SKU, notas, modelo..." 
+            class="w-full pl-10 pr-4 py-2 sm:py-2.5 rounded-xl bg-slate-900 border border-slate-700/80 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-xs sm:text-sm transition"
+            oninput="handleFilterChange()"
+          >
+        </div>
+
+        <!-- Filter Selects -->
+        <div class="grid grid-cols-2 sm:flex sm:flex-nowrap gap-2 items-center">
+          <!-- Zone Filter -->
+          <select id="filter-zone" onchange="handleFilterChange()" class="text-xs bg-slate-900 border border-slate-700 text-slate-200 rounded-xl px-2.5 py-2 sm:py-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none truncate">
+            <option value="ALL">Todas las Zonas</option>
+          </select>
+
+          <!-- Category Filter -->
+          <select id="filter-category" onchange="handleFilterChange()" class="text-xs bg-slate-900 border border-slate-700 text-slate-200 rounded-xl px-2.5 py-2 sm:py-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none truncate">
+            <option value="ALL">Todas las Categorías</option>
+          </select>
+
+          <!-- Status Filter -->
+          <select id="filter-status" onchange="handleFilterChange()" class="text-xs bg-slate-900 border border-slate-700 text-slate-200 rounded-xl px-2.5 py-2 sm:py-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none truncate">
+            <option value="ALL">Todos los Estados</option>
+            <option value="Almacenado">Almacenado</option>
+            <option value="En uso">En uso</option>
+            <option value="Prestado">Prestado</option>
+            <option value="Requiere reparación">Requiere reparación</option>
+          </select>
+
+          <!-- View Mode Toggle -->
+          <div class="flex items-center justify-end bg-slate-900 border border-slate-700 p-1 rounded-xl shrink-0">
+            <button id="view-cards-btn" onclick="setViewMode('cards')" class="p-1 sm:p-1.5 rounded-lg text-white bg-indigo-600 transition" title="Vista de cuadrícula">
+              <i data-lucide="grid" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
+            </button>
+            <button id="view-table-btn" onclick="setViewMode('table')" class="p-1 sm:p-1.5 rounded-lg text-slate-400 hover:text-white transition" title="Vista de tabla">
+              <i data-lucide="list" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick stats bar under search -->
+      <div class="flex items-center justify-between text-[11px] sm:text-xs text-slate-400 px-1 pt-1 border-t border-slate-800">
+        <span id="filter-results-count">Mostrando 0 artículos</span>
+        <button onclick="resetFilters()" class="text-indigo-400 hover:text-indigo-300 font-medium transition">Limpiar filtros</button>
+      </div>
+    </div>
+
+    <!-- CONTENT VIEW CONTAINER -->
+    <div id="content-container" class="min-h-[350px]">
+      <!-- Content rendered by Javascript -->
+    </div>
+  </main>
+
+  <!-- MODAL: ADD / EDIT ITEM -->
+  <div id="item-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto shadow-2xl">
+      <div class="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between sticky top-0 bg-slate-900/95 backdrop-blur z-10">
+        <div class="flex items-center gap-2 sm:gap-2.5">
+          <div class="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg">
+            <i data-lucide="box" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 id="item-modal-title" class="font-bold text-white text-sm sm:text-base">Registrar Nuevo Artículo</h3>
+            <p class="text-[11px] sm:text-xs text-slate-400">Ingresa los datos exactos para saber siempre dónde ubicarlo.</p>
+          </div>
+        </div>
+        <button onclick="closeItemModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="item-form" onsubmit="saveItem(event)" class="p-4 sm:p-5 space-y-3.5 sm:space-y-4">
+        <input type="hidden" id="form-item-id">
+
+        <!-- Line 1: SKU & Name -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Código / SKU *</label>
+            <input type="text" id="form-sku" required placeholder="Ej: TAL-HER-01" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none uppercase font-mono">
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Nombre del Artículo *</label>
+            <input type="text" id="form-name" required placeholder="Ej: Multímetro Digital Profesional" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+          </div>
+        </div>
+
+        <!-- Line 2: Category & Subclass -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="block text-xs font-semibold text-slate-300">Área / Categoría *</label>
+              <button type="button" onclick="openCatalogModal('categories')" class="text-[11px] text-indigo-400 hover:text-indigo-300 flex items-center gap-0.5">
+                <i data-lucide="plus" class="w-3 h-3"></i> Gestionar
+              </button>
+            </div>
+            <select id="form-category" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Subclase / Tipo</label>
+            <input type="text" id="form-subclass" placeholder="Ej: Medición, Soldadura, Contratos..." class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+          </div>
+        </div>
+
+        <!-- Line 3: Location Breakdown -->
+        <div class="p-3 sm:p-3.5 bg-slate-800/40 border border-slate-800 rounded-xl space-y-3">
+          <div class="flex items-center justify-between text-[11px] sm:text-xs font-bold text-indigo-400 uppercase tracking-wider">
+            <span class="flex items-center gap-1.5 sm:gap-2">
+              <i data-lucide="map-pin" class="w-3.5 h-3.5"></i> Ubicación Física Detallada
+            </span>
+            <button type="button" onclick="openCatalogModal('zones')" class="text-[11px] font-normal text-indigo-400 hover:text-indigo-300 flex items-center gap-0.5 lowercase capitalize">
+              <i data-lucide="plus" class="w-3 h-3"></i> Administrar Zonas
+            </button>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
+            <div>
+              <label class="block text-xs text-slate-300 mb-1">Zona General *</label>
+              <select id="form-zone" required class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs text-slate-300 mb-1">Mueble / Estantería *</label>
+              <input type="text" id="form-shelf" required placeholder="Ej: Gabinete A, Estante 2" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+            </div>
+            <div>
+              <label class="block text-xs text-slate-300 mb-1">Caja / Cajón / Gaveta *</label>
+              <input type="text" id="form-container" required placeholder="Ej: Cajón 3, Caja TALLER-C01" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+            </div>
+          </div>
+        </div>
+
+        <!-- Line 4: Quantity & Status -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Cantidad / Unidades *</label>
+            <input type="number" id="form-quantity" min="1" value="1" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Estado Actual *</label>
+            <select id="form-status" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+              <option value="Almacenado">Almacenado (En su lugar)</option>
+              <option value="En uso">En uso constante</option>
+              <option value="Prestado">Prestado a alguien</option>
+              <option value="Requiere reparación">Requiere reparación o repuesto</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Line 5: Photo Upload / Attachment -->
+        <div class="p-3 sm:p-3.5 bg-slate-800/40 border border-slate-800 rounded-xl space-y-2.5">
+          <label class="block text-xs font-semibold text-slate-300 flex items-center justify-between">
+            <span class="flex items-center gap-1.5 text-indigo-400">
+              <i data-lucide="camera" class="w-4 h-4"></i> Fotografía del Artículo
+            </span>
+            <span class="text-[10px] text-slate-400 font-normal">Sube una foto o tómala con la cámara</span>
+          </label>
+          <input type="hidden" id="form-photo-data">
+          
+          <div class="flex flex-col sm:flex-row items-center gap-3">
+            <div id="photo-preview-wrapper" class="w-20 h-20 sm:w-24 sm:h-24 rounded-xl border-2 border-dashed border-slate-700 bg-slate-900/60 flex flex-col items-center justify-center overflow-hidden shrink-0 relative group">
+              <img id="form-photo-preview" src="" alt="Previsualización" class="w-full h-full object-cover hidden">
+              <div id="photo-preview-empty" class="flex flex-col items-center justify-center text-slate-500 text-[10px] p-2 text-center">
+                <i data-lucide="image" class="w-5 h-5 sm:w-6 sm:h-6 mb-1 text-slate-600"></i>
+                <span>Sin foto</span>
+              </div>
+              <button type="button" id="btn-remove-photo" onclick="removePhoto()" class="absolute top-1 right-1 p-1 bg-rose-600/90 text-white rounded-lg hidden hover:bg-rose-500 shadow-md transition" title="Eliminar foto">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+
+            <div class="flex-1 space-y-2 w-full">
+              <div class="flex items-center gap-2">
+                <label class="cursor-pointer px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-medium rounded-xl flex items-center gap-1.5 transition">
+                  <i data-lucide="upload" class="w-3.5 h-3.5 text-indigo-400"></i>
+                  <span>Tomar o Elegir Foto</span>
+                  <input type="file" id="form-photo-file" accept="image/*" capture="environment" onchange="handlePhotoUpload(event)" class="hidden">
+                </label>
+                <span class="text-[11px] text-slate-400">o por enlace:</span>
+              </div>
+              <input type="url" id="form-photo-url" oninput="handlePhotoUrlInput(event)" placeholder="https://ejemplo.com/foto.jpg" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+            </div>
+          </div>
+        </div>
+
+        <!-- Line 6: Notes & Specs -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Notas, Marca, Modelo o Detalles de préstamo</label>
+          <textarea id="form-notes" rows="2" placeholder="Ej: Marca Bosch, prestado a Juan..." class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"></textarea>
+        </div>
+
+        <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+          <button type="button" onclick="closeItemModal()" class="px-3.5 py-2 text-xs font-medium rounded-xl text-slate-400 hover:text-white transition">Cancelar</button>
+          <button type="submit" class="px-5 py-2 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 transition flex items-center gap-1.5">
+            <i data-lucide="check" class="w-4 h-4"></i> Guardar Artículo
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: PRINTABLE LABELS / QR CODES -->
+  <div id="labels-modal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col">
+      <div class="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between">
+        <div>
+          <h3 class="font-bold text-white text-base">Etiquetas Imprimibles para Cajas</h3>
+          <p class="text-xs text-slate-400">Pega estas etiquetas con QR en tus estanterías y cajas.</p>
+        </div>
+        <button onclick="closeLabelModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-4 sm:p-5 space-y-4 flex-1">
+        <div class="flex items-center justify-between bg-slate-800/40 p-3 rounded-xl border border-slate-800">
+          <span class="text-xs text-slate-300">Generadas a partir de tus ubicaciones registradas:</span>
+          <button onclick="window.print()" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white flex items-center gap-1.5 transition">
+            <i data-lucide="printer" class="w-4 h-4"></i> Imprimir
+          </button>
+        </div>
+
+        <div id="print-area" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: DATA MANAGEMENT (EXPORT / IMPORT / BACKUP) -->
+  <div id="data-modal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
+      <div class="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div class="p-2 bg-emerald-500/10 text-emerald-400 rounded-lg"><i data-lucide="database" class="w-5 h-5"></i></div>
+          <h3 class="font-bold text-white text-base">Gestión y Respaldo de Datos</h3>
+        </div>
+        <button onclick="closeDataModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-5 space-y-4 text-xs">
+        <p class="text-slate-400">Exporta a Excel/Sheets o guarda una copia de seguridad en JSON para no perder nada.</p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <button onclick="exportToCSV()" class="p-3.5 bg-slate-800 hover:bg-slate-700/80 border border-slate-700 rounded-xl flex items-center gap-3 text-left transition">
+            <div class="p-2 bg-emerald-500/10 text-emerald-400 rounded-lg"><i data-lucide="sheet" class="w-4 h-4"></i></div>
+            <div>
+              <div class="font-bold text-white">Exportar a Excel</div>
+              <div class="text-[10px] text-slate-400">Formato .CSV estándar</div>
+            </div>
+          </button>
+
+          <button onclick="exportToJSON()" class="p-3.5 bg-slate-800 hover:bg-slate-700/80 border border-slate-700 rounded-xl flex items-center gap-3 text-left transition">
+            <div class="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg"><i data-lucide="download" class="w-4 h-4"></i></div>
+            <div>
+              <div class="font-bold text-white">Copia de Seguridad</div>
+              <div class="text-[10px] text-slate-400">Archivo .JSON completo</div>
+            </div>
+          </button>
+        </div>
+
+        <div class="pt-2 border-t border-slate-800">
+          <label class="block text-slate-300 font-semibold mb-1.5">Restaurar copia desde archivo .JSON</label>
+          <input type="file" accept=".json" onchange="importFromJSON(event)" class="w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-indigo-400 hover:file:bg-slate-700 cursor-pointer">
+        </div>
+
+        <div class="pt-2 border-t border-slate-800 flex justify-between items-center">
+          <span class="text-slate-500 text-[11px]">¿Reiniciar inventario?</span>
+          <button onclick="restoreDefaultDemoData()" class="text-rose-400 hover:text-rose-300 text-xs font-medium transition">
+            Cargar datos de prueba
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: MASTER CATALOG MANAGER (ZONAS Y CATEGORÍAS) -->
+  <div id="catalog-modal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col">
+      <div class="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between sticky top-0 bg-slate-900/95 backdrop-blur z-10">
+        <div class="flex items-center gap-2.5">
+          <div class="p-2 bg-amber-500/10 text-amber-400 rounded-lg">
+            <i data-lucide="folder-tree" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-white text-base">Control de Tablas Maestras</h3>
+            <p class="text-xs text-slate-400">Administra tus Zonas Físicas y Áreas del hogar.</p>
+          </div>
+        </div>
+        <button onclick="closeCatalogModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-4 sm:p-5 space-y-5 flex-1">
+        <div class="flex border-b border-slate-800 gap-4">
+          <button id="tab-zones-btn" onclick="switchCatalogTab('zones')" class="pb-2.5 text-xs sm:text-sm font-semibold border-b-2 border-indigo-500 text-indigo-400 flex items-center gap-2">
+            <i data-lucide="map-pin" class="w-4 h-4"></i> Zonas Generales (<span id="zones-count-badge">0</span>)
+          </button>
+          <button id="tab-cats-btn" onclick="switchCatalogTab('categories')" class="pb-2.5 text-xs sm:text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2">
+            <i data-lucide="tags" class="w-4 h-4"></i> Áreas / Categorías (<span id="cats-count-badge">0</span>)
+          </button>
+        </div>
+
+        <!-- TAB CONTENT: ZONAS -->
+        <div id="tab-zones-panel" class="space-y-4">
+          <div class="flex gap-2">
+            <input type="text" id="new-zone-input" onkeydown="if(event.key==='Enter') addZone()" placeholder="Nueva Zona (ej: Garaje, Ático, Cocina...)" class="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+            <button onclick="addZone()" class="px-3.5 sm:px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 transition">
+              <i data-lucide="plus" class="w-4 h-4"></i> <span class="hidden sm:inline">Agregar</span>
+            </button>
+          </div>
+          <div class="bg-slate-800/40 rounded-xl border border-slate-800 divide-y divide-slate-800" id="zones-list">
+          </div>
+        </div>
+
+        <!-- TAB CONTENT: CATEGORÍAS -->
+        <div id="tab-cats-panel" class="space-y-4 hidden">
+          <div class="flex gap-2">
+            <input type="text" id="new-cat-input" onkeydown="if(event.key==='Enter') addCategory()" placeholder="Nueva Área (ej: Plomería, Jardinería...)" class="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+            <button onclick="addCategory()" class="px-3.5 sm:px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 transition">
+              <i data-lucide="plus" class="w-4 h-4"></i> <span class="hidden sm:inline">Agregar</span>
+            </button>
+          </div>
+          <div class="bg-slate-800/40 rounded-xl border border-slate-800 divide-y divide-slate-800" id="cats-list">
+          </div>
+        </div>
+      </div>
+
+      <div class="p-3.5 border-t border-slate-800 bg-slate-900/90 flex justify-end">
+        <button onclick="closeCatalogModal()" class="px-4 py-2 text-xs font-semibold rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 transition">
+          Listo / Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: IMAGE LIGHTBOX VIEWER -->
+  <div id="image-viewer-modal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-4 hidden" onclick="closeImageViewer()">
+    <div class="max-w-3xl max-h-[90vh] bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col relative" onclick="event.stopPropagation()">
+      <div class="p-3.5 border-b border-slate-800 flex items-center justify-between bg-slate-900/90">
+        <div class="flex items-center gap-2">
+          <span id="viewer-sku" class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"></span>
+          <h4 id="viewer-title" class="text-sm font-bold text-white truncate max-w-xs sm:max-w-sm"></h4>
+        </div>
+        <button onclick="closeImageViewer()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="p-2 flex items-center justify-center bg-slate-950 max-h-[75vh] overflow-hidden">
+        <img id="viewer-img" src="" alt="Foto" class="max-h-[70vh] w-auto max-w-full rounded-lg object-contain">
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: PWA INSTALL GUIDE (FOR IOS/DESKTOP FALLBACK) -->
+  <div id="pwa-guide-modal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 max-w-md w-full space-y-4 shadow-2xl">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold">
+          <i data-lucide="smartphone" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <h4 class="font-bold text-white text-base">Instalar en tu Pantalla de Inicio</h4>
+          <p class="text-xs text-slate-400">Úsala como una app nativa en tu teléfono o PC</p>
+        </div>
+      </div>
+      
+      <div class="p-3 bg-slate-800/60 rounded-xl border border-slate-700/60 text-xs space-y-2 text-slate-300">
+        <p class="font-semibold text-white flex items-center gap-1.5">
+          <i data-lucide="apple" class="w-4 h-4 text-slate-400"></i> En iPhone / iPad (Safari):
+        </p>
+        <ol class="list-decimal list-inside space-y-1 text-slate-300 pl-1">
+          <li>Toca el botón <strong>Compartir</strong> (icono de cuadrado con flecha hacia arriba <span class="text-indigo-400">⎋</span>).</li>
+          <li>Desplázate hacia abajo y selecciona <strong>"Añadir a pantalla de inicio"</strong>.</li>
+          <li>Toca <strong>Añadir</strong>. ¡Listo! Ya tendrás el icono en tu pantalla.</li>
+        </ol>
+        
+        <p class="font-semibold text-white flex items-center gap-1.5 pt-2 border-t border-slate-700">
+          <i data-lucide="chrome" class="w-4 h-4 text-slate-400"></i> En Android / Chrome / Edge:
+        </p>
+        <p>Toca el menú de los tres puntos <strong class="text-white">⋮</strong> y selecciona <strong>"Instalar aplicación"</strong> o <strong>"Añadir a la pantalla principal"</strong>.</p>
+      </div>
+
+      <div class="flex justify-end pt-2">
+        <button onclick="document.getElementById('pwa-guide-modal').classList.add('hidden')" class="px-4 py-2 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition">
+          Entendido
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- NOTIFICATION TOAST -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 bg-slate-800 border border-slate-700 text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-3 transform translate-y-20 opacity-0 transition duration-300 pointer-events-none">
+    <div id="toast-icon" class="text-indigo-400"><i data-lucide="check-circle" class="w-5 h-5"></i></div>
+    <span id="toast-msg" class="text-xs font-semibold">Mensaje</span>
+  </div>
+
+  <!-- JAVASCRIPT APPLICATION LOGIC -->
+  <script>
+    // INITIAL SAMPLE DATA
+    const INITIAL_ITEMS = [
+      {
+        id: "item_01",
+        sku: "TAL-HER-01",
+        name: "Juego de llaves Allen métricas 1.5 - 10mm",
+        category: "Herramientas",
+        subclass: "Herramientas de mano",
+        zone: "Taller",
+        shelf: "Gabinete metálico A",
+        container: "Caja TALLER-C01",
+        quantity: 1,
+        status: "Almacenado",
+        photo: "https://images.unsplash.com/photo-1581244277943-fe4a9c777189?w=600&auto=format&fit=crop&q=80",
+        notes: "Acero cromo vanadio, 9 piezas en estuche azul.",
+        updatedAt: "2026-03-10"
+      },
+      {
+        id: "item_02",
+        sku: "TAL-ELE-02",
+        name: "Multímetro Digital True RMS",
+        category: "Electrónica",
+        subclass: "Medición y diagnóstico",
+        zone: "Taller",
+        shelf: "Estante superior 2",
+        container: "Gaveta TAL-ELEC-01",
+        quantity: 1,
+        status: "En uso",
+        photo: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=600&auto=format&fit=crop&q=80",
+        notes: "Incluye sondas de temperatura y pinzas cocodrilo.",
+        updatedAt: "2026-03-14"
+      },
+      {
+        id: "item_03",
+        sku: "TAL-SOL-03",
+        name: "Cautín de soldar 60W regulable",
+        category: "Herramientas",
+        subclass: "Soldadura electrónica",
+        zone: "Taller",
+        shelf: "Gabinete metálico A",
+        container: "Caja TALLER-C02",
+        quantity: 1,
+        status: "Prestado",
+        photo: "https://images.unsplash.com/photo-1508873696983-2df5293cb395?w=600&auto=format&fit=crop&q=80",
+        notes: "Prestado a Carlos (Vecino). Incluye base y carrete de estaño.",
+        updatedAt: "2026-03-20"
+      },
+      {
+        id: "item_04",
+        sku: "OFI-DOC-01",
+        name: "Contratos de Propiedad, Escrituras y Pólizas",
+        category: "Oficina/Documentos",
+        subclass: "Documentos legales",
+        zone: "Oficina",
+        shelf: "Archivador ignífugo",
+        container: "Carpeta OFI-DOC-01",
+        quantity: 1,
+        status: "Almacenado",
+        photo: "https://images.unsplash.com/photo-1450133064473-71024230f91b?w=600&auto=format&fit=crop&q=80",
+        notes: "Documentos originales en fundas libres de ácido.",
+        updatedAt: "2026-02-01"
+      },
+      {
+        id: "item_05",
+        sku: "OFI-TEC-02",
+        name: "Laptop ThinkPad T480 (Backup)",
+        category: "Oficina/Documentos",
+        subclass: "Cómputo y TI",
+        zone: "Oficina",
+        shelf: "Escritorio principal",
+        container: "Cajón inferior derecho",
+        quantity: 1,
+        status: "Almacenado",
+        photo: "https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=600&auto=format&fit=crop&q=80",
+        notes: "Intel i7, 32GB RAM. Cargador USB-C incluido.",
+        updatedAt: "2026-03-18"
+      },
+      {
+        id: "item_06",
+        sku: "OFI-AUD-03",
+        name: "Micrófono Shure SM58 + Cable XLR 5m",
+        category: "Audio/Cables",
+        subclass: "Audio profesional",
+        zone: "Oficina",
+        shelf: "Estantería modular",
+        container: "Caja OFI-AUD-01",
+        quantity: 2,
+        status: "Almacenado",
+        photo: "https://images.unsplash.com/photo-1590602847861-f357a9332bbc?w=600&auto=format&fit=crop&q=80",
+        notes: "Con funda y filtro antipop.",
+        updatedAt: "2026-03-15"
+      },
+      {
+        id: "item_07",
+        sku: "TAL-REP-04",
+        name: "Surtido de Tornillos Métricos M3 y M4",
+        category: "Repuestos",
+        subclass: "Tornillería y fijación",
+        zone: "Taller",
+        shelf: "Mural organizador",
+        container: "Gavetero GAV-04",
+        quantity: 500,
+        status: "Almacenado",
+        photo: "https://images.unsplash.com/photo-1530124566582-a618bc2615dc?w=600&auto=format&fit=crop&q=80",
+        notes: "Acero inoxidable cabeza Allen y Philips.",
+        updatedAt: "2026-01-20"
+      },
+      {
+        id: "item_08",
+        sku: "BOD-HER-05",
+        name: "Taladro Percutor inalámbrico 18V",
+        category: "Herramientas",
+        subclass: "Herramientas eléctricas",
+        zone: "Bodega",
+        shelf: "Estante metálico C",
+        container: "Maletín rígido BOD-01",
+        quantity: 1,
+        status: "Requiere reparación",
+        photo: "https://images.unsplash.com/photo-1504148455328-c376907d081c?w=600&auto=format&fit=crop&q=80",
+        notes: "Gatillo de velocidad requiere revisión.",
+        updatedAt: "2026-03-22"
+      }
+    ];
+
+    // APPLICATION STATE
+    let inventory = [];
+    let currentViewMode = 'cards';
+    let deferredPrompt = null;
+
+    // MASTER CATALOGS
+    const DEFAULT_ZONES = [
+      { id: "zone_1", name: "Taller", description: "Mesa de trabajo, herramientas y reparaciones" },
+      { id: "zone_2", name: "Oficina", description: "Escritorio, computadoras y archivo documental" },
+      { id: "zone_3", name: "Bodega", description: "Almacenamiento de cajas y repuestos" },
+      { id: "zone_4", name: "Sala", description: "Área común y entretenimiento" }
+    ];
+
+    const DEFAULT_CATEGORIES = [
+      { id: "cat_1", name: "Herramientas" },
+      { id: "cat_2", name: "Electrónica" },
+      { id: "cat_3", name: "Oficina/Documentos" },
+      { id: "cat_4", name: "Audio/Cables" },
+      { id: "cat_5", name: "Repuestos" },
+      { id: "cat_6", name: "Otro" }
+    ];
+
+    let masterZones = [];
+    let masterCategories = [];
+
+    // PWA SETUP: EMBEDDED MANIFEST & SERVICE WORKER
+    function setupPWA() {
+      // 1. Generate App Icon (SVG Data URI)
+      const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="#4f46e5"><rect width="512" height="512" rx="128" fill="#0f172a"/><path d="M136 176l120-64 120 64v160l-120 64-120-64V176z" fill="none" stroke="#6366f1" stroke-width="32" stroke-linecap="round" stroke-linejoin="round"/><path d="M256 112v320M136 176l120 64 120-64" fill="none" stroke="#818cf8" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+      const iconUri = `data:image/svg+xml;base64,${btoa(iconSvg)}`;
+
+      // 2. Set Web App Manifest
+      const manifest = {
+        name: "HomeVault - Almacén Doméstico",
+        short_name: "HomeVault",
+        description: "Inventario de taller, oficina y bodega casera",
+        start_url: window.location.href,
+        display: "standalone",
+        orientation: "portrait-primary",
+        background_color: "#0f172a",
+        theme_color: "#0f172a",
+        icons: [
+          {
+            src: iconUri,
+            sizes: "512x512",
+            type: "image/svg+xml",
+            purpose: "any maskable"
+          }
+        ]
+      };
+
+      const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+      const manifestUrl = URL.createObjectURL(manifestBlob);
+      document.getElementById('manifest-link').setAttribute('href', manifestUrl);
+
+      // 3. Register Inline Service Worker for Offline Caching
+      if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
+        const swCode = `
+          const CACHE_NAME = 'homevault-v1';
+          self.addEventListener('install', (e) => {
+            self.skipWaiting();
+          });
+          self.addEventListener('activate', (e) => {
+            e.waitUntil(clients.claim());
+          });
+          self.addEventListener('fetch', (e) => {
+            e.respondWith(
+              fetch(e.request).catch(() => caches.match(e.request))
+            );
+          });
+        `;
+        const swBlob = new Blob([swCode], { type: 'application/javascript' });
+        const swUrl = URL.createObjectURL(swBlob);
+        navigator.serviceWorker.register(swUrl).catch(err => console.log('SW no habilitado en contexto local simple'));
+      }
+
+      // 4. Handle Install Prompt
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        const installBtn = document.getElementById('pwa-install-btn');
+        if (installBtn) {
+          installBtn.classList.remove('hidden');
+          installBtn.classList.add('flex');
+        }
+      });
+
+      // Show guide button on iOS if not standalone
+      const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+      if (isIos && !isStandalone) {
+        const installBtn = document.getElementById('pwa-install-btn');
+        if (installBtn) {
+          installBtn.classList.remove('hidden');
+          installBtn.classList.add('flex');
+        }
+      }
+    }
+
+    function triggerPWAInstall() {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then((choiceResult) => {
+          if (choiceResult.outcome === 'accepted') {
+            showToast('¡Instalando HomeVault!');
+            document.getElementById('pwa-install-btn').classList.add('hidden');
+          }
+          deferredPrompt = null;
+        });
+      } else {
+        // Fallback instructions modal (for iOS or already triggered browsers)
+        document.getElementById('pwa-guide-modal').classList.remove('hidden');
+        lucide.createIcons();
+      }
+    }
+
+    // LOAD INITIAL STORAGE OR SAMPLE DATA
+    function initApp() {
+      setupPWA();
+
+      // Load inventory
+      const stored = localStorage.getItem('homevault_inventory');
+      if (stored) {
+        try {
+          inventory = JSON.parse(stored);
+        } catch (e) {
+          inventory = [...INITIAL_ITEMS];
+          saveToLocalStorage();
+        }
+      } else {
+        inventory = [...INITIAL_ITEMS];
+        saveToLocalStorage();
+      }
+
+      // Load master catalogs
+      const storedZones = localStorage.getItem('homevault_zones');
+      if (storedZones) {
+        try { masterZones = JSON.parse(storedZones); } catch(e) { masterZones = [...DEFAULT_ZONES]; }
+      } else {
+        masterZones = [...DEFAULT_ZONES];
+        saveZonesToStorage();
+      }
+
+      const storedCats = localStorage.getItem('homevault_categories');
+      if (storedCats) {
+        try { masterCategories = JSON.parse(storedCats); } catch(e) { masterCategories = [...DEFAULT_CATEGORIES]; }
+      } else {
+        masterCategories = [...DEFAULT_CATEGORIES];
+        saveCategoriesToStorage();
+      }
+
+      syncDropdownsWithCatalogs();
+      renderApp();
+    }
+
+    function saveToLocalStorage() {
+      localStorage.setItem('homevault_inventory', JSON.stringify(inventory));
+    }
+
+    function saveZonesToStorage() {
+      localStorage.setItem('homevault_zones', JSON.stringify(masterZones));
+    }
+
+    function saveCategoriesToStorage() {
+      localStorage.setItem('homevault_categories', JSON.stringify(masterCategories));
+    }
+
+    // SYNCHRONIZE DROPDOWNS FROM MASTER CATALOGS
+    function syncDropdownsWithCatalogs() {
+      const filterZone = document.getElementById('filter-zone');
+      const curSelectedZone = filterZone.value;
+      filterZone.innerHTML = `<option value="ALL">Todas las Zonas</option>` +
+        masterZones.map(z => `<option value="${z.name}">${z.name}</option>`).join('');
+      if (masterZones.some(z => z.name === curSelectedZone)) {
+        filterZone.value = curSelectedZone;
+      } else {
+        filterZone.value = 'ALL';
+      }
+
+      const filterCat = document.getElementById('filter-category');
+      const curSelectedCat = filterCat.value;
+      filterCat.innerHTML = `<option value="ALL">Todas las Categorías</option>` +
+        masterCategories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+      if (masterCategories.some(c => c.name === curSelectedCat)) {
+        filterCat.value = curSelectedCat;
+      } else {
+        filterCat.value = 'ALL';
+      }
+
+      const formZone = document.getElementById('form-zone');
+      const curFormZone = formZone.value;
+      formZone.innerHTML = masterZones.map(z => `<option value="${z.name}">${z.name}</option>`).join('');
+      if (masterZones.some(z => z.name === curFormZone)) {
+        formZone.value = curFormZone;
+      }
+
+      const formCat = document.getElementById('form-category');
+      const curFormCat = formCat.value;
+      formCat.innerHTML = masterCategories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+      if (masterCategories.some(c => c.name === curFormCat)) {
+        formCat.value = curFormCat;
+      }
+    }
+
+    // MASTER CATALOG MANAGEMENT LOGIC
+    function openCatalogModal(initialTab = 'zones') {
+      const modal = document.getElementById('catalog-modal');
+      switchCatalogTab(initialTab);
+      renderCatalogLists();
+      modal.classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeCatalogModal() {
+      document.getElementById('catalog-modal').classList.add('hidden');
+      syncDropdownsWithCatalogs();
+      renderApp();
+    }
+
+    function switchCatalogTab(tab) {
+      const zonesBtn = document.getElementById('tab-zones-btn');
+      const catsBtn = document.getElementById('tab-cats-btn');
+      const zonesPanel = document.getElementById('tab-zones-panel');
+      const catsPanel = document.getElementById('tab-cats-panel');
+
+      if (tab === 'zones') {
+        zonesBtn.className = 'pb-2.5 text-xs sm:text-sm font-semibold border-b-2 border-indigo-500 text-indigo-400 flex items-center gap-2';
+        catsBtn.className = 'pb-2.5 text-xs sm:text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2';
+        zonesPanel.classList.remove('hidden');
+        catsPanel.classList.add('hidden');
+      } else {
+        catsBtn.className = 'pb-2.5 text-xs sm:text-sm font-semibold border-b-2 border-indigo-500 text-indigo-400 flex items-center gap-2';
+        zonesBtn.className = 'pb-2.5 text-xs sm:text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2';
+        catsPanel.classList.remove('hidden');
+        zonesPanel.classList.add('hidden');
+      }
+      lucide.createIcons();
+    }
+
+    function renderCatalogLists() {
+      document.getElementById('zones-count-badge').textContent = masterZones.length;
+      document.getElementById('cats-count-badge').textContent = masterCategories.length;
+
+      const zonesList = document.getElementById('zones-list');
+      if (masterZones.length === 0) {
+        zonesList.innerHTML = `<div class="p-4 text-xs text-slate-400 text-center">No hay zonas definidas.</div>`;
+      } else {
+        zonesList.innerHTML = masterZones.map(zone => {
+          const count = inventory.filter(i => i.zone === zone.name).length;
+          return `
+            <div class="p-3 flex items-center justify-between text-xs hover:bg-slate-800/60 transition">
+              <div class="flex items-center gap-2.5">
+                <div class="p-1.5 bg-indigo-500/10 text-indigo-400 rounded-lg">
+                  <i data-lucide="map-pin" class="w-3.5 h-3.5"></i>
+                </div>
+                <div>
+                  <div class="font-bold text-white text-sm">${zone.name}</div>
+                  <div class="text-[11px] text-slate-400">${count} artículo(s) asignados</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-1">
+                <button onclick="promptEditZone('${zone.id}')" class="p-1.5 rounded-lg text-slate-400 hover:text-indigo-400 transition" title="Renombrar">
+                  <i data-lucide="edit-3" class="w-4 h-4"></i>
+                </button>
+                <button onclick="deleteZone('${zone.id}')" class="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 transition" title="Eliminar">
+                  <i data-lucide="trash-2" class="w-4 h-4"></i>
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      const catsList = document.getElementById('cats-list');
+      if (masterCategories.length === 0) {
+        catsList.innerHTML = `<div class="p-4 text-xs text-slate-400 text-center">No hay categorías definidas.</div>`;
+      } else {
+        catsList.innerHTML = masterCategories.map(cat => {
+          const count = inventory.filter(i => i.category === cat.name).length;
+          return `
+            <div class="p-3 flex items-center justify-between text-xs hover:bg-slate-800/60 transition">
+              <div class="flex items-center gap-2.5">
+                <div class="p-1.5 bg-amber-500/10 text-amber-400 rounded-lg">
+                  <i data-lucide="tag" class="w-3.5 h-3.5"></i>
+                </div>
+                <div>
+                  <div class="font-bold text-white text-sm">${cat.name}</div>
+                  <div class="text-[11px] text-slate-400">${count} artículo(s) en esta categoría</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-1">
+                <button onclick="promptEditCategory('${cat.id}')" class="p-1.5 rounded-lg text-slate-400 hover:text-amber-400 transition" title="Renombrar">
+                  <i data-lucide="edit-3" class="w-4 h-4"></i>
+                </button>
+                <button onclick="deleteCategory('${cat.id}')" class="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 transition" title="Eliminar">
+                  <i data-lucide="trash-2" class="w-4 h-4"></i>
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      lucide.createIcons();
+    }
+
+    function addZone() {
+      const input = document.getElementById('new-zone-input');
+      const name = input.value.trim();
+      if (!name) return;
+
+      if (masterZones.some(z => z.name.toLowerCase() === name.toLowerCase())) {
+        showToast('Esta zona ya existe');
+        return;
+      }
+
+      masterZones.push({ id: 'zone_' + Date.now(), name });
+      saveZonesToStorage();
+      input.value = '';
+      renderCatalogLists();
+      syncDropdownsWithCatalogs();
+      showToast(`Zona "${name}" añadida a la base de datos`);
+    }
+
+    function promptEditZone(id) {
+      const zone = masterZones.find(z => z.id === id);
+      if (!zone) return;
+
+      const modalBox = document.createElement('div');
+      modalBox.className = 'fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4';
+      modalBox.innerHTML = `
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 max-w-sm w-full space-y-4 shadow-2xl">
+          <h4 class="font-bold text-white text-base">Renombrar Zona</h4>
+          <p class="text-xs text-slate-400">Si cambias el nombre, todos los artículos en "${zone.name}" se actualizarán a la nueva zona.</p>
+          <input type="text" id="rename-zone-input" value="${zone.name}" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+          <div class="flex justify-end gap-2 pt-2">
+            <button id="cancel-rename" class="px-3.5 py-1.5 text-xs rounded-xl text-slate-400 hover:text-white transition">Cancelar</button>
+            <button id="confirm-rename" class="px-4 py-1.5 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition">Actualizar</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modalBox);
+
+      document.getElementById('cancel-rename').onclick = () => modalBox.remove();
+      document.getElementById('confirm-rename').onclick = () => {
+        const newName = document.getElementById('rename-zone-input').value.trim();
+        if (newName && newName !== zone.name) {
+          const oldName = zone.name;
+          zone.name = newName;
+          saveZonesToStorage();
+          inventory.forEach(i => {
+            if (i.zone === oldName) i.zone = newName;
+          });
+          saveToLocalStorage();
+          renderCatalogLists();
+          syncDropdownsWithCatalogs();
+          renderApp();
+          showToast(`Zona actualizada a "${newName}"`);
+        }
+        modalBox.remove();
+      };
+    }
+
+    function deleteZone(id) {
+      const zone = masterZones.find(z => z.id === id);
+      if (!zone) return;
+
+      const itemsInZone = inventory.filter(i => i.zone === zone.name).length;
+      if (itemsInZone > 0) {
+        showToast(`No puedes eliminar "${zone.name}" porque contiene ${itemsInZone} artículo(s).`);
+        return;
+      }
+
+      masterZones = masterZones.filter(z => z.id !== id);
+      saveZonesToStorage();
+      renderCatalogLists();
+      syncDropdownsWithCatalogs();
+      showToast(`Zona "${zone.name}" eliminada`);
+    }
+
+    function addCategory() {
+      const input = document.getElementById('new-cat-input');
+      const name = input.value.trim();
+      if (!name) return;
+
+      if (masterCategories.some(c => c.name.toLowerCase() === name.toLowerCase())) {
+        showToast('Esta categoría ya existe');
+        return;
+      }
+
+      masterCategories.push({ id: 'cat_' + Date.now(), name });
+      saveCategoriesToStorage();
+      input.value = '';
+      renderCatalogLists();
+      syncDropdownsWithCatalogs();
+      showToast(`Categoría "${name}" creada`);
+    }
+
+    function promptEditCategory(id) {
+      const cat = masterCategories.find(c => c.id === id);
+      if (!cat) return;
+
+      const modalBox = document.createElement('div');
+      modalBox.className = 'fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4';
+      modalBox.innerHTML = `
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 max-w-sm w-full space-y-4 shadow-2xl">
+          <h4 class="font-bold text-white text-base">Renombrar Área / Categoría</h4>
+          <p class="text-xs text-slate-400">Si cambias el nombre, todos los artículos categorizados como "${cat.name}" se actualizarán automáticamente.</p>
+          <input type="text" id="rename-cat-input" value="${cat.name}" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+          <div class="flex justify-end gap-2 pt-2">
+            <button id="cancel-cat-rename" class="px-3.5 py-1.5 text-xs rounded-xl text-slate-400 hover:text-white transition">Cancelar</button>
+            <button id="confirm-cat-rename" class="px-4 py-1.5 text-xs font-semibold rounded-xl bg-amber-600 hover:bg-amber-500 text-white transition">Actualizar</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modalBox);
+
+      document.getElementById('cancel-cat-rename').onclick = () => modalBox.remove();
+      document.getElementById('confirm-cat-rename').onclick = () => {
+        const newName = document.getElementById('rename-cat-input').value.trim();
+        if (newName && newName !== cat.name) {
+          const oldName = cat.name;
+          cat.name = newName;
+          saveCategoriesToStorage();
+          inventory.forEach(i => {
+            if (i.category === oldName) i.category = newName;
+          });
+          saveToLocalStorage();
+          renderCatalogLists();
+          syncDropdownsWithCatalogs();
+          renderApp();
+          showToast(`Categoría actualizada a "${newName}"`);
+        }
+        modalBox.remove();
+      };
+    }
+
+    function deleteCategory(id) {
+      const cat = masterCategories.find(c => c.id === id);
+      if (!cat) return;
+
+      const itemsInCat = inventory.filter(i => i.category === cat.name).length;
+      if (itemsInCat > 0) {
+        showToast(`No puedes eliminar "${cat.name}" porque contiene ${itemsInCat} artículo(s).`);
+        return;
+      }
+
+      masterCategories = masterCategories.filter(c => c.id !== id);
+      saveCategoriesToStorage();
+      renderCatalogLists();
+      syncDropdownsWithCatalogs();
+      showToast(`Categoría "${cat.name}" eliminada`);
+    }
+
+    // MAIN RENDER FUNCTION
+    function renderApp() {
+      updateMetrics();
+      renderContent();
+      lucide.createIcons();
+    }
+
+    // UPDATE METRIC WIDGETS
+    function updateMetrics() {
+      const totalCount = inventory.length;
+      const totalUnits = inventory.reduce((acc, curr) => acc + (parseInt(curr.quantity) || 1), 0);
+      const tallerCount = inventory.filter(i => i.zone === 'Taller').length;
+      const oficinaCount = inventory.filter(i => i.zone === 'Oficina').length;
+      const attentionCount = inventory.filter(i => i.status === 'Prestado' || i.status === 'Requiere reparación').length;
+
+      document.getElementById('metric-total-items').textContent = totalCount;
+      document.getElementById('metric-total-units').textContent = `${totalUnits} uds`;
+      document.getElementById('metric-taller-count').textContent = tallerCount;
+      document.getElementById('metric-oficina-count').textContent = oficinaCount;
+      document.getElementById('metric-attention-count').textContent = attentionCount;
+    }
+
+    // FILTER LOGIC
+    function getFilteredItems() {
+      const search = (document.getElementById('search-input').value || '').toLowerCase().trim();
+      const zone = document.getElementById('filter-zone').value;
+      const category = document.getElementById('filter-category').value;
+      const status = document.getElementById('filter-status').value;
+
+      return inventory.filter(item => {
+        const matchesSearch = 
+          item.name.toLowerCase().includes(search) ||
+          item.sku.toLowerCase().includes(search) ||
+          (item.notes && item.notes.toLowerCase().includes(search)) ||
+          item.shelf.toLowerCase().includes(search) ||
+          item.container.toLowerCase().includes(search) ||
+          (item.subclass && item.subclass.toLowerCase().includes(search));
+
+        const matchesZone = (zone === 'ALL' || item.zone === zone);
+        const matchesCategory = (category === 'ALL' || item.category === category);
+        const matchesStatus = (status === 'ALL' || item.status === status);
+
+        return matchesSearch && matchesZone && matchesCategory && matchesStatus;
+      });
+    }
+
+    function handleFilterChange() {
+      renderContent();
+      lucide.createIcons();
+    }
+
+    function resetFilters() {
+      document.getElementById('search-input').value = '';
+      document.getElementById('filter-zone').value = 'ALL';
+      document.getElementById('filter-category').value = 'ALL';
+      document.getElementById('filter-status').value = 'ALL';
+      renderContent();
+      lucide.createIcons();
+    }
+
+    function setViewMode(mode) {
+      currentViewMode = mode;
+      const cardsBtn = document.getElementById('view-cards-btn');
+      const tableBtn = document.getElementById('view-table-btn');
+
+      if (mode === 'cards') {
+        cardsBtn.className = 'p-1 sm:p-1.5 rounded-lg text-white bg-indigo-600 transition';
+        tableBtn.className = 'p-1 sm:p-1.5 rounded-lg text-slate-400 hover:text-white transition';
+      } else {
+        tableBtn.className = 'p-1 sm:p-1.5 rounded-lg text-white bg-indigo-600 transition';
+        cardsBtn.className = 'p-1 sm:p-1.5 rounded-lg text-slate-400 hover:text-white transition';
+      }
+      renderContent();
+      lucide.createIcons();
+    }
+
+    // STATUS BADGE HELPER
+    function getStatusBadge(status) {
+      switch(status) {
+        case 'Almacenado':
+          return `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>Almacenado</span>`;
+        case 'En uso':
+          return `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold bg-sky-500/10 text-sky-400 border border-sky-500/20"><span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span>En uso</span>`;
+        case 'Prestado':
+          return `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20"><span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>Prestado</span>`;
+        case 'Requiere reparación':
+          return `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20"><span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span>Requiere reparación</span>`;
+        default:
+          return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-slate-700 text-slate-300">${status}</span>`;
+      }
+    }
+
+    // CATEGORY ICON HELPER
+    function getCategoryIcon(category) {
+      switch(category) {
+        case 'Herramientas': return 'wrench';
+        case 'Electrónica': return 'cpu';
+        case 'Oficina/Documentos': return 'file-text';
+        case 'Audio/Cables': return 'headphones';
+        case 'Repuestos': return 'disc';
+        default: return 'package';
+      }
+    }
+
+    // RENDER CONTENT (CARDS OR TABLE)
+    function renderContent() {
+      const container = document.getElementById('content-container');
+      const filtered = getFilteredItems();
+
+      document.getElementById('filter-results-count').textContent = `Mostrando ${filtered.length} de ${inventory.length} artículos`;
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-16 bg-slate-800/30 rounded-2xl border border-slate-800/80 p-6 sm:p-8">
+            <div class="w-12 h-12 mx-auto mb-3 text-slate-500 bg-slate-800 rounded-full flex items-center justify-center">
+              <i data-lucide="inbox" class="w-6 h-6"></i>
+            </div>
+            <h3 class="text-base font-semibold text-white">No se encontraron artículos</h3>
+            <p class="text-xs text-slate-400 max-w-sm mx-auto mt-1">Intenta con otros términos o elimina los filtros aplicados.</p>
+            <button onclick="resetFilters()" class="mt-4 px-4 py-2 text-xs font-semibold rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+              Restablecer filtros
+            </button>
+          </div>
+        `;
+        return;
+      }
+
+      if (currentViewMode === 'cards') {
+        container.innerHTML = `
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
+            ${filtered.map(item => `
+              <div class="bg-slate-800/60 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded-2xl p-4 sm:p-4.5 flex flex-col justify-between transition-all group shadow-sm">
+                <div>
+                  <div class="flex items-center justify-between gap-2 mb-2.5">
+                    <span class="text-[11px] font-mono tracking-wider font-bold px-2 py-0.5 rounded-md bg-slate-900 border border-slate-700 text-indigo-400">
+                      ${item.sku}
+                    </span>
+                    ${getStatusBadge(item.status)}
+                  </div>
+
+                  ${item.photo ? `
+                    <div class="relative w-full h-36 mb-3 rounded-xl overflow-hidden bg-slate-900 border border-slate-700/60 cursor-pointer group/img" onclick="openImageViewer('${item.id}')">
+                      <img src="${item.photo}" alt="${item.name}" class="w-full h-full object-cover transition duration-300 group-hover/img:scale-105" onerror="this.parentElement.style.display='none'">
+                      <div class="absolute inset-0 bg-slate-950/20 group-hover/img:bg-slate-950/40 flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition">
+                        <span class="bg-slate-900/90 text-white text-[11px] font-semibold px-2.5 py-1 rounded-lg flex items-center gap-1 shadow">
+                          <i data-lucide="maximize-2" class="w-3.5 h-3.5 text-indigo-400"></i> Ver foto
+                        </span>
+                      </div>
+                    </div>
+                  ` : ''}
+
+                  <h4 class="font-bold text-white text-sm group-hover:text-indigo-300 transition line-clamp-1 mb-1" title="${item.name}">
+                    ${item.name}
+                  </h4>
+
+                  <div class="flex items-center gap-1.5 text-xs text-slate-400 mb-3">
+                    <i data-lucide="${getCategoryIcon(item.category)}" class="w-3.5 h-3.5 text-slate-400"></i>
+                    <span>${item.category}</span>
+                    ${item.subclass ? `<span class="text-slate-600">•</span><span class="text-slate-400 truncate">${item.subclass}</span>` : ''}
+                  </div>
+
+                  <div class="bg-slate-900/80 rounded-xl p-2.5 sm:p-3 border border-slate-800/80 mb-3 space-y-1.5">
+                    <div class="flex items-center justify-between text-xs">
+                      <span class="text-slate-400 flex items-center gap-1">
+                        <i data-lucide="map-pin" class="w-3 h-3 text-indigo-400"></i> Zona:
+                      </span>
+                      <span class="font-semibold text-slate-200">${item.zone}</span>
+                    </div>
+                    <div class="flex items-center justify-between text-xs">
+                      <span class="text-slate-400 flex items-center gap-1">
+                        <i data-lucide="layers" class="w-3 h-3 text-indigo-400"></i> Mueble:
+                      </span>
+                      <span class="text-slate-200 font-medium">${item.shelf}</span>
+                    </div>
+                    <div class="flex items-center justify-between text-xs">
+                      <span class="text-slate-400 flex items-center gap-1">
+                        <i data-lucide="archive" class="w-3 h-3 text-indigo-400"></i> Contenedor:
+                      </span>
+                      <span class="font-semibold text-amber-400 font-mono text-[11px]">${item.container}</span>
+                    </div>
+                  </div>
+
+                  ${item.notes ? `
+                    <p class="text-xs text-slate-400 italic line-clamp-2 mb-3 bg-slate-900/40 p-2 rounded-lg border border-slate-800/50">
+                      "${item.notes}"
+                    </p>
+                  ` : ''}
+                </div>
+
+                <div class="pt-2.5 border-t border-slate-800/80 flex items-center justify-between">
+                  <div class="text-xs text-slate-400 font-medium">
+                    Cantidad: <span class="text-white font-bold text-sm ml-1">${item.quantity}</span>
+                  </div>
+                  <div class="flex items-center gap-1">
+                    <button onclick="editItem('${item.id}')" class="p-1.5 rounded-lg text-slate-400 hover:text-indigo-400 hover:bg-slate-700/50 transition" title="Editar">
+                      <i data-lucide="edit-3" class="w-4 h-4"></i>
+                    </button>
+                    <button onclick="deleteItem('${item.id}')" class="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-700/50 transition" title="Eliminar">
+                      <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      } else {
+        container.innerHTML = `
+          <div class="bg-slate-800/60 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr class="border-b border-slate-800 bg-slate-900/80 text-slate-400 uppercase font-semibold tracking-wider">
+                    <th class="p-3">Foto</th>
+                    <th class="p-3">SKU</th>
+                    <th class="p-3">Artículo</th>
+                    <th class="p-3">Categoría</th>
+                    <th class="p-3">Ubicación</th>
+                    <th class="p-3">Cant.</th>
+                    <th class="p-3">Estado</th>
+                    <th class="p-3 text-right">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/80 text-slate-200">
+                  ${filtered.map(item => `
+                    <tr class="hover:bg-slate-800/40 transition">
+                      <td class="p-2.5">
+                        ${item.photo ? `
+                          <div class="w-9 h-9 rounded-lg overflow-hidden bg-slate-900 border border-slate-700 cursor-pointer shrink-0" onclick="openImageViewer('${item.id}')">
+                            <img src="${item.photo}" alt="${item.name}" class="w-full h-full object-cover">
+                          </div>
+                        ` : `
+                          <div class="w-9 h-9 rounded-lg bg-slate-800 border border-slate-800 flex items-center justify-center text-slate-600">
+                            <i data-lucide="image" class="w-3.5 h-3.5"></i>
+                          </div>
+                        `}
+                      </td>
+                      <td class="p-3 font-mono text-indigo-400 font-bold">${item.sku}</td>
+                      <td class="p-3">
+                        <div class="font-bold text-white">${item.name}</div>
+                        ${item.notes ? `<div class="text-[11px] text-slate-400 truncate max-w-xs">${item.notes}</div>` : ''}
+                      </td>
+                      <td class="p-3">
+                        <div class="text-slate-300 font-medium">${item.category}</div>
+                        <div class="text-[10px] text-slate-400">${item.subclass || '-'}</div>
+                      </td>
+                      <td class="p-3">
+                        <span class="font-semibold text-slate-100">${item.zone}</span> <span class="text-slate-500">›</span> ${item.shelf} <span class="text-slate-500">›</span> 
+                        <span class="text-amber-400 font-mono font-medium">${item.container}</span>
+                      </td>
+                      <td class="p-3 font-bold text-white">${item.quantity}</td>
+                      <td class="p-3">${getStatusBadge(item.status)}</td>
+                      <td class="p-3 text-right whitespace-nowrap">
+                        <button onclick="editItem('${item.id}')" class="p-1.5 rounded-lg text-slate-400 hover:text-indigo-400 transition">
+                          <i data-lucide="edit-3" class="w-4 h-4"></i>
+                        </button>
+                        <button onclick="deleteItem('${item.id}')" class="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 transition">
+                          <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    // PHOTO HANDLING
+    function handlePhotoUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 800;
+          const MAX_HEIGHT = 800;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
+          setPhotoPreview(dataUrl);
+          document.getElementById('form-photo-url').value = '';
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function handlePhotoUrlInput(event) {
+      const url = event.target.value.trim();
+      if (url) {
+        setPhotoPreview(url);
+      } else {
+        removePhoto();
+      }
+    }
+
+    function setPhotoPreview(src) {
+      const previewImg = document.getElementById('form-photo-preview');
+      const emptyBox = document.getElementById('photo-preview-empty');
+      const btnRemove = document.getElementById('btn-remove-photo');
+      const hiddenInput = document.getElementById('form-photo-data');
+
+      previewImg.src = src;
+      previewImg.classList.remove('hidden');
+      emptyBox.classList.add('hidden');
+      btnRemove.classList.remove('hidden');
+      hiddenInput.value = src;
+    }
+
+    function removePhoto() {
+      const previewImg = document.getElementById('form-photo-preview');
+      const emptyBox = document.getElementById('photo-preview-empty');
+      const btnRemove = document.getElementById('btn-remove-photo');
+      const hiddenInput = document.getElementById('form-photo-data');
+      const fileInput = document.getElementById('form-photo-file');
+      const urlInput = document.getElementById('form-photo-url');
+
+      previewImg.src = '';
+      previewImg.classList.add('hidden');
+      emptyBox.classList.remove('hidden');
+      btnRemove.classList.add('hidden');
+      hiddenInput.value = '';
+      fileInput.value = '';
+      urlInput.value = '';
+    }
+
+    // IMAGE LIGHTBOX VIEWER
+    function openImageViewer(itemId) {
+      const item = inventory.find(i => i.id === itemId);
+      if (!item || !item.photo) return;
+
+      document.getElementById('viewer-sku').textContent = item.sku;
+      document.getElementById('viewer-title').textContent = item.name;
+      document.getElementById('viewer-img').src = item.photo;
+      document.getElementById('image-viewer-modal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeImageViewer() {
+      document.getElementById('image-viewer-modal').classList.add('hidden');
+      document.getElementById('viewer-img').src = '';
+    }
+
+    // MODAL ADD/EDIT ITEM LOGIC
+    function openItemModal(itemId = null) {
+      const modal = document.getElementById('item-modal');
+      const form = document.getElementById('item-form');
+      form.reset();
+      removePhoto();
+
+      if (itemId) {
+        const item = inventory.find(i => i.id === itemId);
+        if (item) {
+          document.getElementById('item-modal-title').textContent = 'Editar Artículo';
+          document.getElementById('form-item-id').value = item.id;
+          document.getElementById('form-sku').value = item.sku;
+          document.getElementById('form-name').value = item.name;
+          document.getElementById('form-category').value = item.category;
+          document.getElementById('form-subclass').value = item.subclass || '';
+          document.getElementById('form-zone').value = item.zone;
+          document.getElementById('form-shelf').value = item.shelf;
+          document.getElementById('form-container').value = item.container;
+          document.getElementById('form-quantity').value = item.quantity;
+          document.getElementById('form-status').value = item.status;
+          document.getElementById('form-notes').value = item.notes || '';
+          
+          if (item.photo) {
+            setPhotoPreview(item.photo);
+            if (item.photo.startsWith('http')) {
+              document.getElementById('form-photo-url').value = item.photo;
+            }
+          }
+        }
+      } else {
+        document.getElementById('item-modal-title').textContent = 'Registrar Nuevo Artículo';
+        document.getElementById('form-item-id').value = '';
+        document.getElementById('form-sku').value = `INV-${Math.floor(1000 + Math.random() * 9000)}`;
+      }
+
+      modal.classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeItemModal() {
+      document.getElementById('item-modal').classList.add('hidden');
+    }
+
+    function saveItem(event) {
+      event.preventDefault();
+      const id = document.getElementById('form-item-id').value;
+      const sku = document.getElementById('form-sku').value.trim().toUpperCase();
+      const name = document.getElementById('form-name').value.trim();
+      const category = document.getElementById('form-category').value;
+      const subclass = document.getElementById('form-subclass').value.trim();
+      const zone = document.getElementById('form-zone').value;
+      const shelf = document.getElementById('form-shelf').value.trim();
+      const container = document.getElementById('form-container').value.trim();
+      const quantity = parseInt(document.getElementById('form-quantity').value) || 1;
+      const status = document.getElementById('form-status').value;
+      const notes = document.getElementById('form-notes').value.trim();
+      const photo = document.getElementById('form-photo-data').value.trim();
+      const today = new Date().toISOString().split('T')[0];
+
+      if (id) {
+        const index = inventory.findIndex(i => i.id === id);
+        if (index !== -1) {
+          inventory[index] = {
+            ...inventory[index],
+            sku, name, category, subclass, zone, shelf, container, quantity, status, notes, photo,
+            updatedAt: today
+          };
+          showToast('Artículo actualizado correctamente');
+        }
+      } else {
+        const newItem = {
+          id: 'item_' + Date.now(),
+          sku, name, category, subclass, zone, shelf, container, quantity, status, notes, photo,
+          updatedAt: today
+        };
+        inventory.unshift(newItem);
+        showToast('Nuevo artículo añadido al almacén');
+      }
+
+      saveToLocalStorage();
+      closeItemModal();
+      renderApp();
+    }
+
+    function editItem(id) {
+      openItemModal(id);
+    }
+
+    function deleteItem(id) {
+      const item = inventory.find(i => i.id === id);
+      if (!item) return;
+
+      const confirmBox = document.createElement('div');
+      confirmBox.className = 'fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4';
+      confirmBox.innerHTML = `
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
+          <div class="flex items-center gap-3 text-rose-400">
+            <i data-lucide="alert-circle" class="w-6 h-6"></i>
+            <h4 class="font-bold text-white text-base">¿Eliminar artículo?</h4>
+          </div>
+          <p class="text-xs text-slate-300">¿Estás seguro de eliminar "<strong>${item.name}</strong>" (${item.sku})?</p>
+          <div class="flex justify-end gap-2 pt-2">
+            <button id="cancel-del" class="px-3.5 py-1.5 text-xs rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition">Cancelar</button>
+            <button id="confirm-del" class="px-4 py-1.5 text-xs font-semibold rounded-xl bg-rose-600 hover:bg-rose-500 text-white transition">Eliminar</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(confirmBox);
+      lucide.createIcons();
+
+      document.getElementById('cancel-del').onclick = () => confirmBox.remove();
+      document.getElementById('confirm-del').onclick = () => {
+        inventory = inventory.filter(i => i.id !== id);
+        saveToLocalStorage();
+        confirmBox.remove();
+        showToast('Artículo eliminado del inventario');
+        renderApp();
+      };
+    }
+
+    // PRINTABLE QR / CONTAINER LABELS MODAL
+    function openLabelModal() {
+      const modal = document.getElementById('labels-modal');
+      const printArea = document.getElementById('print-area');
+      printArea.innerHTML = '';
+
+      const uniqueContainers = [];
+      const seen = new Set();
+
+      inventory.forEach(item => {
+        const key = `${item.zone}|${item.shelf}|${item.container}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          uniqueContainers.push({
+            zone: item.zone,
+            shelf: item.shelf,
+            container: item.container,
+            sampleSku: item.sku,
+            itemCount: inventory.filter(i => i.container === item.container).length
+          });
+        }
+      });
+
+      uniqueContainers.forEach((c, idx) => {
+        const card = document.createElement('div');
+        card.className = "border-2 border-dashed border-slate-700 bg-white text-slate-900 p-4 rounded-xl flex items-center justify-between gap-4";
+        const qrId = `qr-${idx}`;
+        card.innerHTML = `
+          <div class="space-y-1">
+            <div class="text-[10px] font-bold uppercase tracking-wider text-indigo-700 font-mono">${c.zone} › ${c.shelf}</div>
+            <div class="text-lg font-black tracking-tight text-slate-950 font-mono">${c.container}</div>
+            <div class="text-xs text-slate-600 font-medium">Contiene aprox. ${c.itemCount} artículo(s)</div>
+            <div class="text-[9px] text-slate-400 mt-1">HomeVault Storage Tag</div>
+          </div>
+          <div class="p-1 bg-white border border-slate-300 rounded shrink-0 flex items-center justify-center">
+            <canvas id="${qrId}" width="64" height="64"></canvas>
+          </div>
+        `;
+        printArea.appendChild(card);
+
+        setTimeout(() => {
+          const canvasEl = document.getElementById(qrId);
+          if (canvasEl && window.QRCode) {
+            const qrPayload = `HV:${c.zone}/${c.shelf}/${c.container}`;
+            QRCode.toCanvas(canvasEl, qrPayload, {
+              width: 64,
+              margin: 1,
+              errorCorrectionLevel: 'L',
+              color: {
+                dark: '#0f172a',
+                light: '#ffffff'
+              }
+            }, function (error) {
+              if (error) {
+                console.error("Error generating QR:", error);
+              }
+            });
+          }
+        }, 30);
+      });
+
+      modal.classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeLabelModal() {
+      document.getElementById('labels-modal').classList.add('hidden');
+    }
+
+    // BACKUP & EXPORT MODAL LOGIC
+    function openDataModal() {
+      document.getElementById('data-modal').classList.remove('hidden');
+    }
+
+    function closeDataModal() {
+      document.getElementById('data-modal').classList.add('hidden');
+    }
+
+    // EXPORT CSV (EXCEL COMPATIBLE)
+    function exportToCSV() {
+      if (inventory.length === 0) {
+        showToast('No hay datos para exportar');
+        return;
+      }
+
+      const headers = ['SKU', 'Nombre', 'Categoria', 'Subclase', 'Zona', 'Mueble', 'Contenedor_Caja', 'Cantidad', 'Estado', 'Notas', 'Fecha'];
+      const rows = inventory.map(item => [
+        `"${item.sku.replace(/"/g, '""')}"`,
+        `"${item.name.replace(/"/g, '""')}"`,
+        `"${item.category.replace(/"/g, '""')}"`,
+        `"${(item.subclass || '').replace(/"/g, '""')}"`,
+        `"${item.zone.replace(/"/g, '""')}"`,
+        `"${item.shelf.replace(/"/g, '""')}"`,
+        `"${item.container.replace(/"/g, '""')}"`,
+        item.quantity,
+        `"${item.status.replace(/"/g, '""')}"`,
+        `"${(item.notes || '').replace(/"/g, '""')}"`,
+        `"${item.updatedAt || ''}"`
+      ]);
+
+      const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `Inventario_Hogar_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast('Archivo CSV generado con éxito');
+    }
+
+    // EXPORT JSON BACKUP
+    function exportToJSON() {
+      const fullBackup = {
+        inventory,
+        masterZones,
+        masterCategories,
+        exportDate: new Date().toISOString()
+      };
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(fullBackup, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `HomeVault_Backup_${new Date().toISOString().split('T')[0]}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      showToast('Respaldo JSON descargado');
+    }
+
+    // IMPORT JSON BACKUP
+    function importFromJSON(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const imported = JSON.parse(e.target.result);
+          if (Array.isArray(imported)) {
+            // Legacy backup without catalogs
+            inventory = imported;
+          } else if (imported.inventory && Array.isArray(imported.inventory)) {
+            // New full backup format
+            inventory = imported.inventory;
+            if (imported.masterZones) masterZones = imported.masterZones;
+            if (imported.masterCategories) masterCategories = imported.masterCategories;
+            saveZonesToStorage();
+            saveCategoriesToStorage();
+            syncDropdownsWithCatalogs();
+          } else {
+            showToast('El archivo no tiene el formato adecuado');
+            return;
+          }
+          saveToLocalStorage();
+          closeDataModal();
+          renderApp();
+          showToast('Inventario restaurado exitosamente');
+        } catch (err) {
+          showToast('Error al leer el archivo JSON');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    // RESTORE DEMO SAMPLES
+    function restoreDefaultDemoData() {
+      inventory = [...INITIAL_ITEMS];
+      masterZones = [...DEFAULT_ZONES];
+      masterCategories = [...DEFAULT_CATEGORIES];
+      saveToLocalStorage();
+      saveZonesToStorage();
+      saveCategoriesToStorage();
+      syncDropdownsWithCatalogs();
+      closeDataModal();
+      renderApp();
+      showToast('Datos de ejemplo restablecidos');
+    }
+
+    // TOAST NOTIFICATION UTILITY
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      const msgElem = document.getElementById('toast-msg');
+      msgElem.textContent = message;
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+
+      setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 3000);
+    }
+
+    // START ON LOAD
+    window.onload = function() {
+      initApp();
+    };
+  </script>
+</body>
+</html>
