@@ -26,6 +26,10 @@
   <!-- Modern QRCode library -->
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 
+  <!-- Firebase SDK (Compat CDN for browser single-file standalone execution) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
   <style>
     body {
       font-family: 'Inter', sans-serif;
@@ -78,7 +82,11 @@
           <h1 class="text-base sm:text-lg font-bold tracking-tight text-white leading-tight">HomeVault</h1>
           <span class="text-[9px] sm:text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hidden sm:inline-block">ALMACÉN DOMÉSTICO</span>
         </div>
-        <p class="text-[11px] sm:text-xs text-slate-400 line-clamp-1">Control de taller, oficina y bodega</p>
+        <!-- Live Cloud Sync Status Badge -->
+        <div class="flex items-center gap-1.5">
+          <span id="cloud-status-dot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+          <span id="cloud-status-text" class="text-[10px] sm:text-[11px] text-slate-400 font-medium">Conectando a la nube...</span>
+        </div>
       </div>
     </div>
 
@@ -575,6 +583,17 @@
 
   <!-- JAVASCRIPT APPLICATION LOGIC -->
   <script>
+    // FIREBASE PROJECT CONFIGURATION
+    const firebaseConfig = {
+      apiKey: "AIzaSyBWacg2O5ocAACH2eJWpYW3bLpMwIOESxQ",
+      authDomain: "inventario-hogar-7dffa.firebaseapp.com",
+      databaseURL: "https://inventario-hogar-7dffa-default-rtdb.firebaseio.com",
+      projectId: "inventario-hogar-7dffa",
+      storageBucket: "inventario-hogar-7dffa.firebasestorage.app",
+      messagingSenderId: "343499931442",
+      appId: "1:343499931442:web:36eda995861cfb463fe12b"
+    };
+
     // INITIAL SAMPLE DATA
     const INITIAL_ITEMS = [
       {
@@ -703,6 +722,8 @@
     let inventory = [];
     let currentViewMode = 'cards';
     let deferredPrompt = null;
+    let dbRef = null;
+    let isConnectedToCloud = false;
 
     // MASTER CATALOGS
     const DEFAULT_ZONES = [
@@ -723,6 +744,107 @@
 
     let masterZones = [];
     let masterCategories = [];
+
+    // CLOUD SYNC INITIALIZATION
+    function initFirebaseSync() {
+      try {
+        if (!firebase.apps.length) {
+          firebase.initializeApp(firebaseConfig);
+        }
+        const db = firebase.database();
+        dbRef = db.ref('warehouse_inventory');
+
+        // Monitor connection status
+        const connectedRef = db.ref('.info/connected');
+        connectedRef.on('value', (snap) => {
+          if (snap.val() === true) {
+            isConnectedToCloud = true;
+            updateSyncIndicator('synced');
+          } else {
+            isConnectedToCloud = false;
+            updateSyncIndicator('offline');
+          }
+        });
+
+        // Realtime data listener
+        dbRef.on('value', (snapshot) => {
+          const val = snapshot.val();
+          if (val) {
+            // Cloud has data: update local memory and cache
+            if (val.items && Array.isArray(val.items)) {
+              inventory = val.items;
+            } else if (val.items && typeof val.items === 'object') {
+              inventory = Object.values(val.items);
+            }
+
+            if (val.zones && Array.isArray(val.zones)) {
+              masterZones = val.zones;
+            } else if (val.zones && typeof val.zones === 'object') {
+              masterZones = Object.values(val.zones);
+            }
+
+            if (val.categories && Array.isArray(val.categories)) {
+              masterCategories = val.categories;
+            } else if (val.categories && typeof val.categories === 'object') {
+              masterCategories = Object.values(val.categories);
+            }
+
+            saveToLocalStorage();
+            saveZonesToStorage();
+            saveCategoriesToStorage();
+            syncDropdownsWithCatalogs();
+            renderApp();
+            updateSyncIndicator('synced');
+          } else {
+            // First run on cloud: seed with defaults
+            pushFullDataToCloud();
+          }
+        }, (error) => {
+          console.warn('Firebase sync read warning:', error);
+          updateSyncIndicator('offline');
+        });
+      } catch (err) {
+        console.error('Error inicializando Firebase:', err);
+        updateSyncIndicator('offline');
+      }
+    }
+
+    function updateSyncIndicator(status) {
+      const dot = document.getElementById('cloud-status-dot');
+      const text = document.getElementById('cloud-status-text');
+      if (!dot || !text) return;
+
+      if (status === 'synced') {
+        dot.className = 'w-2 h-2 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400';
+        text.className = 'text-[10px] sm:text-[11px] text-emerald-400 font-medium';
+        text.textContent = 'En la nube (Sincronizado)';
+      } else if (status === 'saving') {
+        dot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-pulse';
+        text.className = 'text-[10px] sm:text-[11px] text-amber-400 font-medium';
+        text.textContent = 'Guardando en la nube...';
+      } else {
+        dot.className = 'w-2 h-2 rounded-full bg-slate-500';
+        text.className = 'text-[10px] sm:text-[11px] text-slate-400 font-medium';
+        text.textContent = 'Modo local (Sin conexión)';
+      }
+    }
+
+    function pushFullDataToCloud() {
+      if (dbRef) {
+        updateSyncIndicator('saving');
+        dbRef.set({
+          items: inventory,
+          zones: masterZones,
+          categories: masterCategories,
+          lastSync: new Date().toISOString()
+        }).then(() => {
+          updateSyncIndicator('synced');
+        }).catch((err) => {
+          console.warn('Error guardando en la nube:', err);
+          updateSyncIndicator('offline');
+        });
+      }
+    }
 
     // PWA SETUP: EMBEDDED MANIFEST & SERVICE WORKER
     function setupPWA() {
@@ -819,27 +941,19 @@
     function initApp() {
       setupPWA();
 
-      // Load inventory
+      // Load initial local cache first to render immediately
       const stored = localStorage.getItem('homevault_inventory');
       if (stored) {
-        try {
-          inventory = JSON.parse(stored);
-        } catch (e) {
-          inventory = [...INITIAL_ITEMS];
-          saveToLocalStorage();
-        }
+        try { inventory = JSON.parse(stored); } catch (e) { inventory = [...INITIAL_ITEMS]; }
       } else {
         inventory = [...INITIAL_ITEMS];
-        saveToLocalStorage();
       }
 
-      // Load master catalogs
       const storedZones = localStorage.getItem('homevault_zones');
       if (storedZones) {
         try { masterZones = JSON.parse(storedZones); } catch(e) { masterZones = [...DEFAULT_ZONES]; }
       } else {
         masterZones = [...DEFAULT_ZONES];
-        saveZonesToStorage();
       }
 
       const storedCats = localStorage.getItem('homevault_categories');
@@ -847,11 +961,13 @@
         try { masterCategories = JSON.parse(storedCats); } catch(e) { masterCategories = [...DEFAULT_CATEGORIES]; }
       } else {
         masterCategories = [...DEFAULT_CATEGORIES];
-        saveCategoriesToStorage();
       }
 
       syncDropdownsWithCatalogs();
       renderApp();
+
+      // Connect to Google Firebase Realtime Database
+      initFirebaseSync();
     }
 
     function saveToLocalStorage() {
@@ -1017,6 +1133,7 @@
 
       masterZones.push({ id: 'zone_' + Date.now(), name });
       saveZonesToStorage();
+      pushFullDataToCloud();
       input.value = '';
       renderCatalogLists();
       syncDropdownsWithCatalogs();
@@ -1053,6 +1170,7 @@
             if (i.zone === oldName) i.zone = newName;
           });
           saveToLocalStorage();
+          pushFullDataToCloud();
           renderCatalogLists();
           syncDropdownsWithCatalogs();
           renderApp();
@@ -1074,6 +1192,7 @@
 
       masterZones = masterZones.filter(z => z.id !== id);
       saveZonesToStorage();
+      pushFullDataToCloud();
       renderCatalogLists();
       syncDropdownsWithCatalogs();
       showToast(`Zona "${zone.name}" eliminada`);
@@ -1091,6 +1210,7 @@
 
       masterCategories.push({ id: 'cat_' + Date.now(), name });
       saveCategoriesToStorage();
+      pushFullDataToCloud();
       input.value = '';
       renderCatalogLists();
       syncDropdownsWithCatalogs();
@@ -1127,6 +1247,7 @@
             if (i.category === oldName) i.category = newName;
           });
           saveToLocalStorage();
+          pushFullDataToCloud();
           renderCatalogLists();
           syncDropdownsWithCatalogs();
           renderApp();
@@ -1148,6 +1269,7 @@
 
       masterCategories = masterCategories.filter(c => c.id !== id);
       saveCategoriesToStorage();
+      pushFullDataToCloud();
       renderCatalogLists();
       syncDropdownsWithCatalogs();
       showToast(`Categoría "${cat.name}" eliminada`);
@@ -1601,6 +1723,7 @@
       }
 
       saveToLocalStorage();
+      pushFullDataToCloud();
       closeItemModal();
       renderApp();
     }
@@ -1635,6 +1758,7 @@
       document.getElementById('confirm-del').onclick = () => {
         inventory = inventory.filter(i => i.id !== id);
         saveToLocalStorage();
+        pushFullDataToCloud();
         confirmBox.remove();
         showToast('Artículo eliminado del inventario');
         renderApp();
@@ -1796,9 +1920,10 @@
             return;
           }
           saveToLocalStorage();
+          pushFullDataToCloud();
           closeDataModal();
           renderApp();
-          showToast('Inventario restaurado exitosamente');
+          showToast('Inventario restaurado y sincronizado con la nube');
         } catch (err) {
           showToast('Error al leer el archivo JSON');
         }
@@ -1814,10 +1939,11 @@
       saveToLocalStorage();
       saveZonesToStorage();
       saveCategoriesToStorage();
+      pushFullDataToCloud();
       syncDropdownsWithCatalogs();
       closeDataModal();
       renderApp();
-      showToast('Datos de ejemplo restablecidos');
+      showToast('Datos de ejemplo restablecidos y sincronizados en la nube');
     }
 
     // TOAST NOTIFICATION UTILITY
